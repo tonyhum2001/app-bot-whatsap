@@ -1,15 +1,17 @@
 Flujo general
 
-Meta/WhatsApp llama tu webhook (HTTP POST)
+1) Meta/WhatsApp llama tu webhook (HTTP POST)
 Llega un JSON con el mensaje, el número, tipo (text/location), etc.
 
-Tu servidor recibe y valida
+
+2)Tu servidor recibe y valida
 
 Verifica que sea un evento válido
 
 Extrae datos: from, messageId, timestamp, type, text/location
 
-Responder rápido “200 OK”
+
+3)Responder rápido “200 OK”
 
 Importante: respondés 200 enseguida para que Meta no reintente.
 
@@ -33,7 +35,8 @@ raw_json
 
 received_at
 
-Lógica de negocio (consultar BD)
+
+5)Lógica de negocio (consultar BD)
 
 Ejemplo: si es location, consultás PostGIS:
 
@@ -41,7 +44,8 @@ SELECT area FROM areas WHERE ST_Contains(geom, point)
 
 O si es text, buscás estado del usuario, última incidencia, etc.
 
-Armar respuesta
+
+6)Armar respuesta
 
 Según lo que devolvió la BD:
 
@@ -51,13 +55,16 @@ Según lo que devolvió la BD:
 
 “No pude ubicar tu zona, enviá ubicación”
 
-Enviar respuesta por WhatsApp (API de salida)
+
+
+7)Enviar respuesta por WhatsApp (API de salida)
 
 Llamás a Graph API /messages
 
 Registrás en otra tabla outbound_messages lo que enviaste (opcional pero recomendado)
 
-Manejo de errores + reintentos
+
+8)Manejo de errores + reintentos
 
 Si falla BD o WhatsApp API:
 
@@ -67,7 +74,10 @@ guardás estado failed
 
 (opcional) reintentar con una cola (más adelante)
 
+
+
 Diagrama rápido (mental)
+
 
 WhatsApp → (POST /webhook) → Node
 
@@ -80,6 +90,7 @@ Node → DB: SELECT (reglas / zonas / estado)
 Node → WhatsApp API: enviar respuesta
 
 Node → DB: INSERT outbound / update status
+
 
 Estructura mínima de módulos (para no mezclar todo)
 
