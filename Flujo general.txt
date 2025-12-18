@@ -1,0 +1,113 @@
+Flujo general
+
+Meta/WhatsApp llama tu webhook (HTTP POST)
+Llega un JSON con el mensaje, el número, tipo (text/location), etc.
+
+Tu servidor recibe y valida
+
+Verifica que sea un evento válido
+
+Extrae datos: from, messageId, timestamp, type, text/location
+
+Responder rápido “200 OK”
+
+Importante: respondés 200 enseguida para que Meta no reintente.
+
+Lo demás lo procesás “por detrás” (en el mismo código, pero después del res.sendStatus(200)).
+
+Persistencia (guardar en la base)
+
+Insertás un registro en tabla inbound_messages:
+
+message_id (único) para evitar duplicados
+
+from
+
+type
+
+text
+
+lat/lon
+
+raw_json
+
+received_at
+
+Lógica de negocio (consultar BD)
+
+Ejemplo: si es location, consultás PostGIS:
+
+SELECT area FROM areas WHERE ST_Contains(geom, point)
+
+O si es text, buscás estado del usuario, última incidencia, etc.
+
+Armar respuesta
+
+Según lo que devolvió la BD:
+
+“Estás dentro del área X, no hay corte”
+
+“Hay un corte reportado en tu zona”
+
+“No pude ubicar tu zona, enviá ubicación”
+
+Enviar respuesta por WhatsApp (API de salida)
+
+Llamás a Graph API /messages
+
+Registrás en otra tabla outbound_messages lo que enviaste (opcional pero recomendado)
+
+Manejo de errores + reintentos
+
+Si falla BD o WhatsApp API:
+
+logueás error
+
+guardás estado failed
+
+(opcional) reintentar con una cola (más adelante)
+
+Diagrama rápido (mental)
+
+WhatsApp → (POST /webhook) → Node
+
+Node: 200 OK inmediato
+
+Node → DB: INSERT inbound
+
+Node → DB: SELECT (reglas / zonas / estado)
+
+Node → WhatsApp API: enviar respuesta
+
+Node → DB: INSERT outbound / update status
+
+Estructura mínima de módulos (para no mezclar todo)
+
+routes/webhook.routes.js → recibe HTTP
+
+controllers/webhook.controller.js → parsea y decide qué hacer
+
+db/index.js → conexión y queries
+
+repositories/messages.repo.js → INSERT/SELECT de mensajes
+
+services/rules.service.js → lógica (ej: ST_Contains)
+
+services/whatsapp.service.js → enviar mensajes
+
+2 reglas IMPORTANTES (te evitan dolores de cabeza)
+1) Evitar duplicados
+
+Meta a veces reintenta. Guardá message_id con UNIQUE:
+
+Si ya existe, no vuelvas a procesar.
+
+2) Responder 200 rápido
+
+Si esperás a consultar BD y enviar WhatsApp antes de responder, te puede:
+
+timeout
+
+reintentos
+
+duplicados
