@@ -1,0 +1,30 @@
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+CREATE TABLE IF NOT EXISTS inbound_messages (
+  id bigserial PRIMARY KEY,
+  message_id text UNIQUE NOT NULL,
+  wa_from text NOT NULL,
+  msg_type text NOT NULL,
+  text_body text,
+  latitude double precision,
+  longitude double precision,
+  raw_json jsonb,
+  received_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS outbound_messages (
+  id bigserial PRIMARY KEY,
+  wa_to text NOT NULL,
+  text_body text NOT NULL,
+  status text DEFAULT 'sent',
+  sent_at timestamptz DEFAULT now()
+);
+
+-- Ejemplo de tabla de áreas (polígonos)
+CREATE TABLE IF NOT EXISTS areas (
+  id bigserial PRIMARY KEY,
+  nombre text NOT NULL,
+  geom geometry(Polygon, 4326) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_areas_geom ON areas USING gist (geom);
